@@ -312,6 +312,10 @@ def chat_loop(
     # Set context length
     context_len = get_context_length(model.config)
 
+    print(model.config)
+    print(model_path, load_8bit, cpu_offloading, conv_template, temperature, repetition_penalty, max_new_tokens)
+    print(gptq_config, revision, judge_sent_end, history)
+    
     # Chat
     def new_chat():
         if conv_template:
