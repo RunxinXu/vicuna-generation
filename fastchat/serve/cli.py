@@ -25,7 +25,7 @@ from rich.markdown import Markdown
 
 from fastchat.model.model_adapter import add_model_args
 from fastchat.modules.gptq import GptqConfig
-from fastchat.serve.inference import ChatIO, chat_loop
+from fastchat.serve.inference import ChatIO, chat_loop, inference_loop
 
 
 class SimpleChatIO(ChatIO):
@@ -56,9 +56,9 @@ class SimpleChatIO(ChatIO):
             output_text = output_text.strip().split(" ")
             now = len(output_text) - 1
             if now > pre:
-                print(" ".join(output_text[pre:now]), end=" ", flush=True)
+                # print(" ".join(output_text[pre:now]), end=" ", flush=True)
                 pre = now
-        print(" ".join(output_text[pre:]), flush=True)
+        # print(" ".join(output_text[pre:]), flush=True)
         return " ".join(output_text)
 
 
@@ -213,6 +213,50 @@ def main(args):
     except KeyboardInterrupt:
         print("exit...")
 
+def main_inference(args):
+    if args.gpus:
+        if len(args.gpus.split(",")) < args.num_gpus:
+            raise ValueError(
+                f"Larger --num-gpus ({args.num_gpus}) than --gpus {args.gpus}!"
+            )
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+
+    if args.style == "simple":
+        chatio = SimpleChatIO(args.multiline)
+    elif args.style == "rich":
+        chatio = RichChatIO(args.multiline, args.mouse)
+    elif args.style == "programmatic":
+        chatio = ProgrammaticChatIO()
+    else:
+        raise ValueError(f"Invalid style for console: {args.style}")
+    try:
+        inference_loop(
+            args.dataset,
+            args.save,
+            args.model_path,
+            args.device,
+            args.num_gpus,
+            args.max_gpu_memory,
+            args.load_8bit,
+            args.cpu_offloading,
+            args.conv_template,
+            args.temperature,
+            args.repetition_penalty,
+            args.max_new_tokens,
+            chatio,
+            GptqConfig(
+                ckpt=args.gptq_ckpt or args.model_path,
+                wbits=args.gptq_wbits,
+                groupsize=args.gptq_groupsize,
+                act_order=args.gptq_act_order,
+            ),
+            args.revision,
+            args.judge_sent_end,
+            args.debug,
+            history=not args.no_history,
+        )
+    except KeyboardInterrupt:
+        print("exit...")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -251,5 +295,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Print useful debug information (e.g., prompts)",
     )
+    parser.add_argument(
+        "--dataset", type=str, default='', help="huggingface dataset"
+    )
+    parser.add_argument(
+        "--save", type=str, default='', help="huggingface dataset"
+    )
     args = parser.parse_args()
-    main(args)
+    # main(args)
+    main_inference(args)

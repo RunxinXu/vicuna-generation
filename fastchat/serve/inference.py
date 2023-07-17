@@ -5,6 +5,7 @@ import math
 import sys
 import time
 from typing import Iterable, Optional, Dict
+from tqdm import tqdm
 import warnings
 
 import psutil
@@ -315,7 +316,7 @@ def chat_loop(
     print(model.config)
     print(model_path, load_8bit, cpu_offloading, conv_template, temperature, repetition_penalty, max_new_tokens)
     print(gptq_config, revision, judge_sent_end, history)
-    
+
     # Chat
     def new_chat():
         if conv_template:
@@ -385,3 +386,141 @@ def chat_loop(
                 "speed (token/s)": round(num_tokens / duration, 2),
             }
             print(f"\n{msg}\n")
+
+def inference_loop(
+    dataset: str,
+    save: str,
+    model_path: str,
+    device: str,
+    num_gpus: int,
+    max_gpu_memory: str,
+    load_8bit: bool,
+    cpu_offloading: bool,
+    conv_template: Optional[str],
+    temperature: float,
+    repetition_penalty: float,
+    max_new_tokens: int,
+    chatio: ChatIO,
+    gptq_config: GptqConfig,
+    revision: str,
+    judge_sent_end: bool,
+    debug: bool,
+    history: bool = True,
+):
+    # Model
+    model, tokenizer = load_model(
+        model_path,
+        device,
+        num_gpus,
+        max_gpu_memory,
+        load_8bit,
+        cpu_offloading,
+        gptq_config,
+        revision,
+        debug,
+    )
+    generate_stream_func = get_generate_stream_function(model, model_path)
+
+    model_type = str(type(model)).lower()
+    is_t5 = "t5" in model_type
+    is_codet5p = "codet5p" in model_type
+
+    # Hardcode T5's default repetition penalty to be 1.2
+    if is_t5 and repetition_penalty == 1.0:
+        repetition_penalty = 1.2
+
+    # Set context length
+    context_len = get_context_length(model.config)
+
+    print(model.config)
+    print(model_path, load_8bit, cpu_offloading, conv_template, temperature, repetition_penalty, max_new_tokens)
+    print(gptq_config, revision, judge_sent_end, history)
+    
+    # Chat
+    def new_chat():
+        if conv_template:
+            conv = get_conv_template(conv_template)
+        else:
+            conv = get_conversation_template(model_path)
+        return conv
+
+    conv = None
+
+    from datasets import load_from_disk, Dataset
+    import json
+    dataset = load_from_disk(dataset)
+    new_dataset = []
+
+    with open(save, 'w') as fout:
+        for row in tqdm(dataset):
+            if not history or not conv:
+                conv = new_chat()
+            
+            # handling my own data
+            vicuna_content = row['vicuna_content']
+            for i, (role, content) in enumerate(vicuna_content):
+                if i % 2 == 0:
+                    assert role == 'Human'
+                    conv.append_message(conv.roles[0], content)
+                else:
+                    assert role == 'Assistant'
+                    if i == len(vicuna_content) - 1:
+                        conv.append_message(conv.roles[1], None)
+                    else:
+                        conv.append_message(conv.roles[1], content)
+
+            prompt = conv.get_prompt()
+            gen_params = {
+                "model": model_path,
+                "prompt": prompt,
+                "temperature": temperature,
+                "repetition_penalty": repetition_penalty,
+                "max_new_tokens": max_new_tokens,
+                "stop": conv.stop_str,
+                "stop_token_ids": conv.stop_token_ids,
+                "echo": False,
+            }
+
+            responses = []
+            for _ in range(2):
+                chatio.prompt_for_output(conv.roles[1])
+                output_stream = generate_stream_func(
+                    model,
+                    tokenizer,
+                    gen_params,
+                    device,
+                    context_len=context_len,
+                    judge_sent_end=judge_sent_end,
+                    stream_interval=10000
+                )
+                t = time.time()
+                outputs = chatio.stream_output(output_stream)
+                duration = time.time() - t
+                # conv.update_last_message(outputs.strip())
+                # row['vicuna7b_response'] = outputs
+                # new_dataset.append(row)
+                responses.append(outputs)
+
+                if debug:
+                    num_tokens = len(tokenizer.encode(outputs))
+                    msg = {
+                        "conv_template": conv.name,
+                        "prompt": prompt,
+                        "outputs": outputs,
+                        "speed (token/s)": round(num_tokens / duration, 2),
+                    }
+                    print(f"\n{msg}\n")
+            
+            fout.write(json.dumps({
+                'id': row['id'],
+                'response1': responses[0],
+                'response2': responses[1]
+            }, ensure_ascii=False)+'\n')
+            fout.flush()
+
+
+    # def gen():
+    #     for row in tqdm(new_dataset):
+    #         yield row
+    # fianl_dataset = Dataset.from_generator(gen)
+    # fianl_dataset.save_to_disk(save)
