@@ -390,6 +390,7 @@ def chat_loop(
 def inference_loop(
     dataset: str,
     save: str,
+    responsenum: int,
     model_path: str,
     device: str,
     num_gpus: int,
@@ -481,8 +482,10 @@ def inference_loop(
                 "echo": False,
             }
 
-            responses = []
-            for _ in range(2):
+            result = {
+                'id': row['id']
+            }
+            for idx, _ in enumerate(range(responsenum)):
                 chatio.prompt_for_output(conv.roles[1])
                 output_stream = generate_stream_func(
                     model,
@@ -499,7 +502,7 @@ def inference_loop(
                 # conv.update_last_message(outputs.strip())
                 # row['vicuna7b_response'] = outputs
                 # new_dataset.append(row)
-                responses.append(outputs)
+                result[f'response{idx+1}'] = outputs
 
                 if debug:
                     num_tokens = len(tokenizer.encode(outputs))
@@ -510,17 +513,7 @@ def inference_loop(
                         "speed (token/s)": round(num_tokens / duration, 2),
                     }
                     print(f"\n{msg}\n")
-            
-            fout.write(json.dumps({
-                'id': row['id'],
-                'response1': responses[0],
-                'response2': responses[1]
-            }, ensure_ascii=False)+'\n')
+
+            fout.write(result, ensure_ascii=False)+'\n'
             fout.flush()
-
-
-    # def gen():
-    #     for row in tqdm(new_dataset):
-    #         yield row
-    # fianl_dataset = Dataset.from_generator(gen)
-    # fianl_dataset.save_to_disk(save)
+            

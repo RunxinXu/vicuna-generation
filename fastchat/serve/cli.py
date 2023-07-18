@@ -233,6 +233,7 @@ def main_inference(args):
         inference_loop(
             args.dataset,
             args.save,
+            args.responsenum,
             args.model_path,
             args.device,
             args.num_gpus,
@@ -300,6 +301,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--save", type=str, default='', help="huggingface dataset"
+    )
+    parser.add_argument(
+        "--responsenum", type=int, default=1, help="huggingface dataset"
     )
     args = parser.parse_args()
     # main(args)
