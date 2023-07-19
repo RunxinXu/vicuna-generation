@@ -454,8 +454,7 @@ def inference_loop(
 
     with open(save, 'w') as fout:
         for row in tqdm(dataset):
-            if not history or not conv:
-                conv = new_chat()
+            conv = new_chat()
             
             # handling my own data
             vicuna_content = row['vicuna_content']
@@ -513,7 +512,7 @@ def inference_loop(
                         "speed (token/s)": round(num_tokens / duration, 2),
                     }
                     print(f"\n{msg}\n")
-
-            fout.write(result, ensure_ascii=False)+'\n'
+                    
+            fout.write(json.dumps(result, ensure_ascii=False) + '\n')
             fout.flush()
             
