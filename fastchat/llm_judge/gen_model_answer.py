@@ -13,8 +13,52 @@ import shortuuid
 import torch
 from tqdm import tqdm
 
-from fastchat.llm_judge.common import load_questions, temperature_config
+from fastchat.llm_judge.common import load_questions
 from fastchat.model import load_model, get_conversation_template
+
+# config1
+temperature_config = {
+    1: {
+        "writing": 1.0,
+        "roleplay": 1.0,
+        "extraction": 0.4,
+        "math": 0.4,
+        "coding": 0.4,
+        "reasoning": 0.4,
+        "stem": 0.7,
+        "humanities": 0.7,
+    },
+    2: {
+        "writing": 1.0,
+        "roleplay": 1.0,
+        "extraction": 0.2,
+        "math": 0.2,
+        "coding": 0.2,
+        "reasoning": 0.2,
+        "stem": 0.4,
+        "humanities": 0.4,
+    },
+    3: {
+        "writing": 1.0,
+        "roleplay": 1.0,
+        "extraction": 0.5,
+        "math": 0.5,
+        "coding": 0.5,
+        "reasoning": 0.5,
+        "stem": 0.5,
+        "humanities": 0.5,
+    },
+    4: {
+        "writing": 1.0,
+        "roleplay": 1.0,
+        "extraction": 1.0,
+        "math": 1.0,
+        "coding": 1.0,
+        "reasoning": 1.0,
+        "stem": 1.0,
+        "humanities": 1.0,
+    }
+}
 
 
 def run_eval(
@@ -29,6 +73,7 @@ def run_eval(
     num_gpus_per_model,
     num_gpus_total,
     max_gpu_memory,
+    temperature_config
 ):
     questions = load_questions(question_file, question_begin, question_end)
     # random shuffle the questions to balance the loading
@@ -58,6 +103,7 @@ def run_eval(
                 num_choices,
                 num_gpus_per_model,
                 max_gpu_memory,
+                temperature_config
             )
         )
 
@@ -75,6 +121,7 @@ def get_model_answers(
     num_choices,
     num_gpus_per_model,
     max_gpu_memory,
+    temperature_config
 ):
     model, tokenizer = load_model(
         model_path,
@@ -85,7 +132,6 @@ def get_model_answers(
         cpu_offloading=False,
         debug=False,
     )
-
     for question in tqdm(questions):
         if question["category"] in temperature_config:
             temperature = temperature_config[question["category"]]
@@ -151,7 +197,7 @@ def get_model_answers(
                 "choices": choices,
                 "tstamp": time.time(),
             }
-            fout.write(json.dumps(ans_json) + "\n")
+            fout.write(json.dumps(ans_json, ensure_ascii=False) + "\n")
 
 
 def reorg_answer_file(answer_file):
@@ -218,6 +264,10 @@ if __name__ == "__main__":
         type=str,
         help="Maxmum GPU memory used for model weights per GPU.",
     )
+    parser.add_argument(
+        "--temperatureconfig",
+        type=int,
+    )
     args = parser.parse_args()
 
     if args.num_gpus_total // args.num_gpus_per_model > 1:
@@ -233,6 +283,7 @@ if __name__ == "__main__":
 
     print(f"Output to {answer_file}")
 
+    temperature_config = temperature_config[args.temperatureconfig]
     run_eval(
         args.model_path,
         args.model_id,
@@ -245,6 +296,7 @@ if __name__ == "__main__":
         args.num_gpus_per_model,
         args.num_gpus_total,
         args.max_gpu_memory,
+        temperature_config,
     )
 
     reorg_answer_file(answer_file)
