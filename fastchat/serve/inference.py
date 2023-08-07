@@ -450,7 +450,6 @@ def inference_loop(
     from datasets import load_from_disk, Dataset
     import json
     dataset = load_from_disk(dataset)
-    new_dataset = []
 
     with open(save, 'w') as fout:
         for row in tqdm(dataset):

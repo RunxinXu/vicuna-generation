@@ -8,13 +8,14 @@
 #     --repetition_penalty 1.0
 
 conda activate llama    
-P=/home/xrx/rm/applications/DeepSpeed-Chat/training/step2_reward_model_finetuning/data/data/evaluation
-d=statichhtest_subset200
-r=${d}_vicuna_generation_10response_t1.0len1024_split6.json
-CUDA_VISIBLE_DEVICES=7 python -m fastchat.serve.cli \
+P=/home/xrx/rm/applications/DeepSpeed-Chat/training/step2_reward_model_finetuning/data/data/evaluation/alpacaeval
+d=alpacaeval_vicunaformat_subset603
+r=alpacaeval_vicunaformat_subset603.json
+
+CUDA_VISIBLE_DEVICES=0 python -m fastchat.serve.cli \
     --dataset ${P}/${d} \
     --save ${P}/${r} \
-    --responsenum 10 \
+    --responsenum 42 \
     --model-path lmsys/vicuna-7b-v1.3 \
     --temperature 1.0 \
     --repetition_penalty 1.0 \

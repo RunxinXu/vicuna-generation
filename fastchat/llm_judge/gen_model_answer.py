@@ -18,6 +18,16 @@ from fastchat.model import load_model, get_conversation_template
 
 # config1
 temperature_config = {
+    0: {
+        "writing": 0.7,
+        "roleplay": 0.7,
+        "extraction": 0.0,
+        "math": 0.0,
+        "coding": 0.0,
+        "reasoning": 0.0,
+        "stem": 0.1,
+        "humanities": 0.1,
+    },
     1: {
         "writing": 1.0,
         "roleplay": 1.0,
