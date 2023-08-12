@@ -452,13 +452,8 @@ def inference_loop(
     dataset = load_from_disk(dataset)
 
     ids = set()
-    with open('/home/xrx/rm/applications/DeepSpeed-Chat/training/step2_reward_model_finetuning/data/data/evaluation/alpacaeval/alpacaeval_vicunaformat_subset603.json') as f:
-        for line in f:
-            line = json.loads(line)
-            ids.add(line['id'])
-    
 
-    with open(save, 'a') as fout:
+    with open(save, 'w') as fout:
         for row in tqdm(dataset):
             if row['id'] in ids:
                 continue
