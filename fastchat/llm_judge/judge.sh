@@ -4,9 +4,9 @@ export OPENAI_API_KEY=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
 
 python gen_judgment.py \
     --mode pairwise-baseline \
-    --model-list vicuna \
-    --baseline-model static \
-    --bench-name mt_bench \
+    --model-list semantic_static \
+    --baseline-model vicuna-7b-v1.3 \
+    --bench-name vicuna_bench \
     --parallel 2
 
 # python gen_judgment.py \
@@ -17,9 +17,9 @@ python gen_judgment.py \
 
 python show_result.py \
     --mode pairwise-baseline \
-    --model-list vicuna \
-    --baseline-model static \
-    --bench-name mt_bench
+    --model-list semantic_static \
+    --baseline-model vicuna-7b-v1.3 \
+    --bench-name vicuna_bench
 
 # python show_result.py \
 #     --mode single  \
